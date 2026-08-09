@@ -58,6 +58,7 @@ def _build_parser():
     clean.add_argument("--inpaint-method", choices=["telea", "ns"], default="telea")
     clean.add_argument("--inpaint-radius", type=float, default=3.0)
     clean.add_argument("--inpaint-dilate", type=int, default=0)
+    clean.add_argument("--inpaint-model", choices=["opencv", "adaptive"], default="opencv")
 
     # Keep detext as a small compatibility alias for explicit-mask workflows.
     detext = subparsers.add_parser("detext", help="Alias for clean")
@@ -69,6 +70,7 @@ def _build_parser():
     detext.add_argument("--inpaint-method", choices=["telea", "ns"], default="telea")
     detext.add_argument("--inpaint-radius", type=float, default=3.0)
     detext.add_argument("--inpaint-dilate", type=int, default=0)
+    detext.add_argument("--inpaint-model", choices=["opencv", "adaptive"], default="opencv")
     return parser
 
 
@@ -97,6 +99,7 @@ def main():
         task=args.command,
         gap=args.gap,
         dual=args.dual,
+        model=getattr(args, "inpaint_model", "opencv"),
         model_options={
             "method": args.inpaint_method,
             "radius": args.inpaint_radius,

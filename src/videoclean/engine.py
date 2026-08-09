@@ -41,20 +41,23 @@ class WipeEngine:
         self, task: str = "detext", *, verbose: bool = False, gap: int = 10,
         dual: bool = False, detector: Optional[TextDetector] = None,
         model: str = "opencv", model_options: Optional[dict] = None,
+        inpaint_model: Optional[str] = None,
         detect_mode: str = "auto", ocr: str = "auto", **legacy,
     ):
         if task not in _TASK_CLASSES:
             raise ValueError(f"Unknown task: {task}. Choose from: {list(_TASK_CLASSES)}")
-        if model != "opencv":
-            raise ValueError("videoclean supports only the OpenCV inpainter")
+        model = inpaint_model or model
+        if model not in {"opencv", "adaptive"}:
+            raise ValueError("videoclean supports 'opencv' and 'adaptive' inpainters")
         self.task = task
+        self._model = model
         self._verbose = verbose
         self._detector = detector
         self._detect_mode = detect_mode
         self._ocr = ocr
         self._model_options = dict(model_options or {})
         self._task_impl: BaseTask = _TASK_CLASSES[task](gap=gap, dual=dual)
-        self._task_impl.inpainter = get_registry().create("opencv", **self._model_options)
+        self._task_impl.inpainter = get_registry().create(model, **self._model_options)
         self._task_impl.backend = self._task_impl.inpainter
         self._task_impl.feather_radius = _DEFAULT_FEATHER_RADIUS
         if task == "clean":
@@ -163,7 +166,7 @@ class WipeEngine:
 
     def _ensure_model(self):
         if self._task_impl.inpainter is None:
-            self._task_impl.inpainter = get_registry().create("opencv", **self._model_options)
+            self._task_impl.inpainter = get_registry().create(self._model, **self._model_options)
         self._task_impl.backend = self._task_impl.inpainter
 
     def process(self, video: str, mask: str | None = None, output: str = "result/",
