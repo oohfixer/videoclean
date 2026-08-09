@@ -15,9 +15,10 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Batch-clean videos with videoclean")
     parser.add_argument("source", help="Video file or directory")
     parser.add_argument("-o", "--output", help="Output directory")
-    parser.add_argument("--clean", action="store_true", help="Remove detected overlays")
+    parser.add_argument("--clean", action="store_true", help="Compatibility flag; cleaning is the default")
+    parser.add_argument("--no-clean", "--copy", action="store_true", help="Copy files without cleaning")
     parser.add_argument("-y", "--yes", action="store_true", help="Run without confirmation")
-    parser.add_argument("--detect-mode", choices=["fast", "balanced", "sensitive"], default="balanced")
+    parser.add_argument("--detect-mode", choices=["auto", "fast", "balanced", "sensitive"], default="auto")
     parser.add_argument("--inpaint-method", choices=["telea", "ns"], default="telea")
     parser.add_argument("--inpaint-radius", type=float, default=3.0)
     parser.add_argument("--inpaint-dilate", type=int, default=0)
@@ -41,7 +42,7 @@ def main() -> int:
 
     for video in videos:
         destination = output / f"{video.stem}.mp4"
-        if not args.clean:
+        if args.no_clean:
             shutil.copy2(video, destination)
             continue
         command = [

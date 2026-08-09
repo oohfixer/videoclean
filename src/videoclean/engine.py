@@ -41,7 +41,7 @@ class WipeEngine:
         self, task: str = "detext", *, verbose: bool = False, gap: int = 10,
         dual: bool = False, detector: Optional[TextDetector] = None,
         model: str = "opencv", model_options: Optional[dict] = None,
-        detect_mode: str = "balanced", ocr: str = "auto", **legacy,
+        detect_mode: str = "auto", ocr: str = "auto", **legacy,
     ):
         if task not in _TASK_CLASSES:
             raise ValueError(f"Unknown task: {task}. Choose from: {list(_TASK_CLASSES)}")
@@ -265,8 +265,9 @@ class WipeEngine:
 
     def _build_fresh_clean_plan(self, video, result, selected_ids, snapshot, directed):
         selection = self._explicit_selection_kwargs(result.candidates, selected_ids, directed)
+        effective_mode = snapshot.get("effective_detect_mode", snapshot["detect_mode"])
         return build_refined_wipe_plan(
-            video, result, compute_source(video), refine=snapshot["detect_mode"] != "fast",
+            video, result, compute_source(video), refine=effective_mode != "fast",
             request=snapshot, progress=lambda done, total: self._emit_progress(ProgressEvent("refine", done, total)),
             check_cancelled=self._check_cancelled, **selection,
         )
@@ -297,7 +298,9 @@ class WipeEngine:
         effective_targets = list(dict.fromkeys(effective_targets))
         normalized = {normalize_target(target) for target in effective_targets}
         detect_text = not requested_regions and not normalized or bool(normalized & {"subtitle", "timestamp", "watermark", "scene_text", "unknown_text"}) or bool(intent and not normalized)
-        params = resolve_detect_params(detect_mode or self._detect_mode, has_subtitle_target="subtitle" in normalized)
+        requested_mode = detect_mode or self._detect_mode
+        if requested_mode not in {"auto", "fast", "balanced", "sensitive"}:
+            raise ValueError("detect_mode must be auto, fast, balanced, or sensitive")
         recognizer = self._build_recognizer(ocr or self._ocr)
         mode = detector_mode or "dbnet"
         if mode not in {"dbnet", "hybrid"}:
@@ -307,18 +310,42 @@ class WipeEngine:
             detector = _default_detector()
             if mode == "hybrid":
                 detector = HybridTextDetector(detector)
-        self._emit_progress(ProgressEvent("detect", 0, params["sample_count"], message=f"Scanning {params['sample_count']} sampled frames"))
-        result = detect_clean_candidates(video, detector=detector, regions=requested_regions, detect_text=detect_text, include_logo="logo" in normalized, include_translucent_watermark="watermark" in normalized, sample_count=params["sample_count"], consistency=params["consistency"], subtitle_fallback=params["subtitle_fallback"], recognizer=recognizer)
-        selected = select_clean_candidates(result.candidates, targets=effective_targets, intent=intent)
-        print(f"[videoclean] found {len(result.candidates)} candidate(s); selected {len(selected)}")
+        def run_pass(mode_name):
+            params = resolve_detect_params(mode_name, has_subtitle_target="subtitle" in normalized)
+            self._emit_progress(ProgressEvent("detect", 0, params["sample_count"], message=f"Scanning {params['sample_count']} sampled frames ({mode_name})"))
+            detected = detect_clean_candidates(
+                video, detector=detector, regions=requested_regions,
+                detect_text=detect_text, include_logo="logo" in normalized,
+                include_translucent_watermark="watermark" in normalized,
+                sample_count=params["sample_count"], consistency=params["consistency"],
+                subtitle_fallback=params["subtitle_fallback"], recognizer=recognizer,
+            )
+            chosen = select_clean_candidates(detected.candidates, targets=effective_targets, intent=intent)
+            return detected, chosen, mode_name
+
+        if requested_mode == "auto":
+            result, selected, effective_mode = run_pass("balanced")
+            if not result.candidates:
+                print("[videoclean] no candidates in balanced mode; retrying sensitive mode")
+                self._emit_progress(ProgressEvent("detect", 0, 1, message="Retrying with sensitive mode"))
+                result, selected, effective_mode = run_pass("sensitive")
+        else:
+            result, selected, effective_mode = run_pass(requested_mode)
+        print(f"[videoclean] {effective_mode} mode found {len(result.candidates)} candidate(s); selected {len(selected)}")
         if not result.candidates:
             print("[videoclean] no text or overlay candidates were detected")
         write_clean_artifacts(result, selected, output)
+
         if confirm:
             selected = self._confirm_candidates(result.candidates, selected)
             write_clean_artifacts(result, selected, output)
         self._emit_progress(ProgressEvent("detect", 1, 1))
-        return result, {candidate.id for candidate in selected}, {"intent": intent, "targets": effective_targets, "regions": requested_regions, "detect_mode": detect_mode or self._detect_mode, "ocr": ocr or self._ocr, "detector_mode": mode}, bool(targets or intent or regions or confirm)
+        snapshot = {
+            "intent": intent, "targets": effective_targets, "regions": requested_regions,
+            "detect_mode": requested_mode, "effective_detect_mode": effective_mode,
+            "ocr": ocr or self._ocr, "detector_mode": mode,
+        }
+        return result, {candidate.id for candidate in selected}, snapshot, bool(targets or intent or regions or confirm)
 
     @staticmethod
     def _confirm_candidates(candidates, selected):

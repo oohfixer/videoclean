@@ -52,7 +52,7 @@ def _build_parser():
     clean.add_argument("--intent", default=None)
     clean.add_argument("--preview", action="store_true")
     clean.add_argument("--confirm", action="store_true")
-    clean.add_argument("--detect-mode", choices=["fast", "balanced", "sensitive"], default="balanced")
+    clean.add_argument("--detect-mode", choices=["auto", "fast", "balanced", "sensitive"], default="auto")
     clean.add_argument("--ocr", choices=["auto", "off", "rapidocr"], default="auto")
     clean.add_argument("--detector", dest="detector_mode", choices=["dbnet", "hybrid"], default="dbnet")
     clean.add_argument("--inpaint-method", choices=["telea", "ns"], default="telea")
