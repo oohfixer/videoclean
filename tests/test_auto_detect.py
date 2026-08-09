@@ -32,7 +32,7 @@ def test_auto_mode_runs_balanced_then_sensitive(monkeypatch, tmp_path):
     result, selected, snapshot, directed = engine._detect_clean(
         "input.mp4", object(), [], None, [], None, "off", str(tmp_path), False, "dbnet"
     )
-    assert calls == [50, 80]
+    assert calls == [24, 80]
     assert snapshot["detect_mode"] == "auto"
     assert snapshot["effective_detect_mode"] == "sensitive"
     assert selected == set()

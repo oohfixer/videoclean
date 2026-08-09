@@ -327,9 +327,9 @@ class WipeEngine:
             return detected, chosen, mode_name
 
         if requested_mode == "auto":
-            result, selected, effective_mode = run_pass("balanced")
+            result, selected, effective_mode = run_pass("fast")
             if not result.candidates:
-                print("[videoclean] no candidates in balanced mode; retrying sensitive mode")
+                print("[videoclean] no candidates in fast mode; retrying sensitive mode")
                 self._emit_progress(ProgressEvent("detect", 0, 1, message="Retrying with sensitive mode"))
                 result, selected, effective_mode = run_pass("sensitive")
         else:

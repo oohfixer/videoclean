@@ -84,7 +84,7 @@ def main():
 
     if args.command == "detext":
         args.command = "detext"
-        args.detect_mode = "balanced"
+        args.detect_mode = "fast"
         args.ocr = "off"
         args.detector_mode = "dbnet"
         args.target = None
