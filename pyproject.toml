@@ -1,0 +1,28 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "videoclean"
+version = "0.1.0"
+description = "OpenCV-only removal of hardcoded subtitles, watermarks, logos, and timestamps"
+license = { file = "LICENSE" }
+requires-python = ">=3.10"
+dependencies = ["opencv-python-headless>=4.5,<5", "numpy", "tqdm"]
+classifiers = ["License :: OSI Approved :: GNU General Public License v3 (GPLv3)", "Programming Language :: Python :: 3"]
+
+[project.optional-dependencies]
+ocr = ["rapidocr-onnxruntime"]
+dev = ["pytest", "ruff", "build"]
+
+[project.scripts]
+videoclean = "videoclean.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/videoclean"]
+
+[tool.hatch.build.targets.sdist]
+include = ["/src", "/tests", "/LICENSE", "/LICENSE-APACHE-2.0", "/NOTICE", "/PROVENANCE.md", "/README.md", "/pyproject.toml"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

@@ -1,0 +1,10 @@
+videoclean third-party attribution
+
+This project can use PP-OCRv5 detector weights derived from PaddleOCR.
+
+PP-OCRv5 detector weights
+Copyright (c) PaddlePaddle Authors
+Licensed under the Apache License, Version 2.0.
+
+The detector weight is distributed separately from videoclean's GPLv3 source.
+See PROVENANCE.md and LICENSE-APACHE-2.0 for attribution and license terms.
